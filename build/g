@@ -1,0 +1,10 @@
+#!/bin/bash
+exe=01
+args="-ggdb -g -pg -O3"
+self=$(dirname $0)
+pushd $self
+set -x
+g++ ../*.cpp $args -o $exe && gprof ./$exe gmon.out > gprof.txt
+set +x
+xdg-open output.tga
+popd
