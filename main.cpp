@@ -50,11 +50,18 @@ void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) {
 
 void triangle(Vec2i t[], TGAImage &image, TGAColor color) {
     std::sort(t, t+3, [](Vec2i a, Vec2i b) { return a.y<b.y; });
-    // int total_height = t[2].y-t[0].y;
-    for (int i=0; i<=2; i++){
-        int x1 = t[(i+1)%3].x;
-        int y1 = t[(i+1)%3].y;
-        line(t[i].x, t[i].y, x1, y1, image, color);
+    int total_height = t[2].y-t[0].y;
+    for (int i=0; i<total_height; i++) {
+        bool is_above_seg = i >= t[1].y-t[0].y;
+        int seg_height = is_above_seg ? t[2].y-t[1].y : t[1].y-t[0].y;
+        float H_frac = (float)i/total_height;    // 强制转换int->float
+        float h_frac = (float)(i-(is_above_seg ? t[1].y-t[0].y : 0))/seg_height;   // don't div 0
+        Vec2i v_longset = t[0] + (t[2]-t[0])*H_frac;
+        Vec2i v_seg = is_above_seg ? t[1]+(t[2]-t[1])*h_frac : t[0]+(t[1]-t[0])*h_frac;
+        if (v_longset.x > v_seg.x) std::swap(v_longset, v_seg);     // 保证A在B左边
+        for (int j=v_longset.x; j<=v_seg.x; j++) {
+            image.set(j, t[0].y+i, color);
+        }
     }
 }
 
@@ -62,7 +69,7 @@ int main(int argc, char** argv) {
     TGAImage image(200, 200, TGAImage::RGB);
 
     Vec2i t0[3] = {Vec2i(10, 70),   Vec2i(50, 160),  Vec2i(70, 80)};
-    Vec2i t1[3] = {Vec2i(180, 50),  Vec2i(150, 1),   Vec2i(70, 180)};
+    Vec2i t1[3] = {Vec2i(180, 50),  Vec2i(150, 50),   Vec2i(70, 180)};
     Vec2i t2[3] = {Vec2i(180, 150), Vec2i(120, 160), Vec2i(130, 180)};
     triangle(t0, image, red);
     triangle(t1, image, white);
