@@ -5,8 +5,8 @@ self=$(dirname $0)
 pushd $self
 set -x
 g++ ../*.cpp $args -o $exe &&\
+./$exe || exit 1
 # gprof ./$exe gmon.out > gprof.txt
-./$exe
 
 set +x
 xdg-open output.tga
