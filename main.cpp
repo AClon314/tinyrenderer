@@ -80,15 +80,24 @@ int main(int argc, char** argv) {
         model = new Model("../head.obj");
     }
 
+    Vec3f light_dir(0,0,-1);
     for (int i=0; i<model->nfaces(); i++) {
         std::vector<int> face = model->face(i); 
-        Vec2i screen_coords[3]; 
+        Vec2i screen_coords[3];
+        Vec3f world_coords[3];  // face的三个顶点
         for (int j=0; j<3; j++) { 
-            Vec3f world_coords = model->vert(face[j]); 
-            screen_coords[j] = Vec2i((world_coords.x+1.)*width/2., (world_coords.y+1.)*height/2.); 
+            Vec3f v = model->vert(face[j]);
+            screen_coords[j] = Vec2i((v.x+1.)*width/2., (v.y+1.)*height/2.);    // -1~1 mapping to 0~width/height
+            world_coords[j]  = v;
         }
-        triangle(screen_coords, image, TGAColor(rand()%255, rand()%255, rand()%255, 255)); 
-}
+        Vec3f n = (world_coords[2]-world_coords[0])^(world_coords[1]-world_coords[0]);  // 法向量
+        n.normalize();
+        float intensity = n*light_dir;  // 光照强度
+        if (intensity>0) {
+            triangle(screen_coords, image, TGAColor(intensity*255, intensity*255, intensity*255, 255));
+        }
+        // ​ 注意，口腔的内部被绘制到了嘴唇的顶部。只是因为我们对不可见三角形的拙劣裁剪，只能在凸多边形上才能正常工作。我们会在写出 z-buffer 后处理掉这个阴影。
+    }
 
     image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
     image.write_tga_file("output.tga");
