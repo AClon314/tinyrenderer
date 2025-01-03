@@ -4,6 +4,8 @@
 /// gprof O0优化，代码质量与执行时间无明显关系
 /// 优化，就是将易理解的短代码，转为难理解的、或更长或更短代码。所以不要太早优化。
 
+const float FLOAT_MAX = std::numeric_limits<float>::max();
+
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor black = TGAColor(0,   0,   0,   255);
 const TGAColor red   = TGAColor(255, 0,   0,   255);
@@ -51,11 +53,11 @@ Vec3f centroid(Vec2i *pts, Vec2i P) {
     return Vec3f(1.f-(u.x+u.y)/u.z, u.y/u.z, u.x/u.z);  // 重心坐标：三角形内任意一点，能表示成三个顶点的线性组合
 }
 
-// 画三角形，lesson 2
-void triangle(Vec2i t[], TGAImage &image, TGAColor color) {
-    Vec2i bboxmin(image.get_width()-1,  image.get_height()-1);  // 左下角；min初始值为max，max初始值为min
-    Vec2i bboxmax(0, 0);    // 右上角
-    Vec2i clamp=bboxmin;
+// 画三角形+zbuffer，lesson 2~3
+void triangle(Vec3f *t, TGAImage &image, TGAColor color) {
+    Vec3f bboxmin(image.get_width()-1,  image.get_height()-1);  // 左下角；min初始值为max，max初始值为min
+    Vec3f bboxmax(0, 0);    // 右上角
+    Vec3f clamp=bboxmin;
     for (int i=0; i<3; i++) {
         // 减少屏幕外绘制
         bboxmin.x = std::max(0, std::min(bboxmin.x, t[i].x));
@@ -63,7 +65,7 @@ void triangle(Vec2i t[], TGAImage &image, TGAColor color) {
         bboxmax.x = std::min(clamp.x, std::max(bboxmax.x, t[i].x));
         bboxmax.y = std::min(clamp.y, std::max(bboxmax.y, t[i].y));
     }
-    Vec2i P;
+    Vec3f P;
     for (P.x=bboxmin.x; P.x<=bboxmax.x; P.x++) {
         for (P.y=bboxmin.y; P.y<=bboxmax.y; P.y++) {
             // 逐点绘制
@@ -74,41 +76,15 @@ void triangle(Vec2i t[], TGAImage &image, TGAColor color) {
     }
 }
 
-// 光栅化，lesson 3
-void rasterize(Vec2i p0, Vec2i p1, TGAImage &image, TGAColor color, int ybuffer[]) {
-    if (p0.x>p1.x) std::swap(p0, p1);   // keep p0.x <= p1.x
-    for (int x=p0.x; x<=p1.x; x++) {
-        float t = (x-p0.x)/(float)(p1.x-p0.x);  // t∈[0,1]
-        int y = p0.y*(1.-t) + p1.y*t;
-        if (ybuffer[x]<y) {
-            ybuffer[x] = y;
-            for (int j=0; j<16; j++)
-                image.set(x, j, color);
-        }
-    }
-}
-
 int main(int argc, char** argv) {
-    // if (2==argc) {
-    //     model = new Model(argv[1]);
-    // } else {
-    //     model = new Model("../head.obj");
-    // }
-
-    int ybuffer[width];
-    for (int i=0; i<width; i++) {
-        ybuffer[i] = std::numeric_limits<int>::min();
+    if (2==argc) {
+        model = new Model(argv[1]);
+    } else {
+        model = new Model("../head.obj");
     }
 
-    // TGAImage image(width, height, TGAImage::RGB);
-    // line(20, 34, 744, 400, image, red);
-    // line(120, 434, 444, 400, image, green);
-    // line(330, 463, 594, 200, image, blue);
-
-    TGAImage image(width, 16, TGAImage::RGB);
-    rasterize(Vec2i(20, 34),   Vec2i(744, 400), image, red,   ybuffer);
-    rasterize(Vec2i(120, 434), Vec2i(444, 400), image, green, ybuffer);
-    rasterize(Vec2i(330, 463), Vec2i(594, 200), image, blue,  ybuffer);
+    TGAImage image(width, height, TGAImage::RGB);
+    triangle(screen_coords, float *zbuffer, image, TGAColor(intensity*255, intensity*255, intensity*255, 255));
 
     image.flip_vertically();
     image.write_tga_file("output.tga");
