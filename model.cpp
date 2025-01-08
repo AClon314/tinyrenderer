@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-Model::Model(const char *filename) : verts_(), faces_() {
+Model::Model(const char *filename) : verts_(), faces_(), uvs_() {
     std::ifstream in;
     in.open(filename, std::ifstream::in);
     if (in.fail()) return;
@@ -14,7 +14,7 @@ Model::Model(const char *filename) : verts_(), faces_() {
     while (!in.eof()) {
         std::getline(in, line);
         std::istringstream iss(line.c_str());
-        char trash;
+        char trash;  // 丢弃1个字符
         if (!line.compare(0, 2, "v ")) {
             iss >> trash;
             Vec3f v;
@@ -29,9 +29,15 @@ Model::Model(const char *filename) : verts_(), faces_() {
                 f.push_back(idx);
             }
             faces_.push_back(f);
+        } else if (!line.compare(0, 3, "vt ")) {
+            // vt  0.566 0.146 0.000
+            iss >> trash >> trash;
+            Vec3f _uv;
+            for (int i = 0; i < 3; i++) iss >> _uv[i];
+            uvs_.push_back(_uv);
         }
     }
-    std::cerr << "# v# " << verts_.size() << " f# " << faces_.size() << std::endl;
+    std::cerr << "# v# " << verts_.size() << " f# " << faces_.size() << " uv#" << uvs_.size() << std::endl;
 }
 
 Model::~Model() {
@@ -51,4 +57,8 @@ std::vector<int> Model::face(int idx) {
 
 Vec3f Model::vert(int i) {
     return verts_[i];
+}
+
+Vec3f Model::uv(int i) {
+    return uvs_[i];
 }

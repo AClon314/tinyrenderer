@@ -46,6 +46,7 @@ void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) {
 }
 
 // 枚举一个包围盒中所有的像素，找到在三角形内的像素，计算该像素的重心坐标。如果有分量是负数，那这个像素就不在三角形内。lesson 2
+// return：(a,b,c)=(bc,cp,bp)
 Vec3f barycentric(Vec3f *pts, Vec3f P) {
     // (AB,AC,PA)的x与y分量做叉积，得到垂直于面的向量
     Vec3f u = cross(Vec3f(pts[2][0] - pts[0][0], pts[1][0] - pts[0][0], pts[0][0] - P[0]),
@@ -59,28 +60,36 @@ Vec3f barycentric(Vec3f *pts, Vec3f P) {
 }
 
 // 画三角形+zbuffer，lesson 2~3
-void triangle(Vec3f *t, float *zbuffer, TGAImage &image, TGAColor color) {
+void triangle(Vec3f *screen, Vec3f *uv, float *zbuffer, TGAImage &image, TGAImage &sss, const float intensity) {
     Vec2f bboxmin(FLOAT_MAX, FLOAT_MAX);    // 左下角；min初始值为max，max初始值为min
     Vec2f bboxmax(-FLOAT_MAX, -FLOAT_MAX);  // 右上角
     Vec2f clamp(image.get_width() - 1, image.get_height() - 1);
     for (int i = 0; i < 3; i++) {
         // 减少屏幕外绘制
         for (int j = 0; j < 2; j++) {
-            bboxmin[j] = std::max(0.f, std::min(bboxmin[j], t[i][j]));
-            bboxmax[j] = std::min(clamp[j], std::max(bboxmax[j], t[i][j]));
+            bboxmin[j] = std::max(0.f, std::min(bboxmin[j], screen[i][j]));
+            bboxmax[j] = std::min(clamp[j], std::max(bboxmax[j], screen[i][j]));
         }
     }
     Vec3f P;
     for (P.x = bboxmin.x; P.x <= bboxmax.x; P.x++) {
         for (P.y = bboxmin.y; P.y <= bboxmax.y; P.y++) {
-            Vec3f bc_screen = barycentric(t, P);
-            if (bc_screen.x < 0 || bc_screen.y < 0 || bc_screen.z < 0) continue;
+            Vec3f bc_ratio = barycentric(screen, P);
+            Vec3f uv_ratio = Vec3f(0, 0, 0);
+            if (bc_ratio.x < 0 || bc_ratio.y < 0 || bc_ratio.z < 0) continue;
             P.z = 0;
-            for (int i = 0; i < 3; i++) P.z += t[i][2] * bc_screen[i];
+            for (int i = 0; i < 3; i++) {
+                P.z += screen[i][2] * bc_ratio[i];
+                uv_ratio += uv[i] * bc_ratio[i];
+            }
+            Vec2i uv_screen = Vec2i(uv_ratio[0] * sss.get_width(), uv_ratio[1] * sss.get_height());
             int idx = int(P.x + P.y * width);
             if (zbuffer[idx] < P.z) {
                 zbuffer[idx] = P.z;
-                image.set(P.x, P.y, color);
+                // image.set(P.x, P.y, TGAColor(sss.get(P.x, P.y)) * intensity);
+                image.set(P.x, P.y, TGAColor(sss.get(uv_screen[0], uv_screen[1])) * intensity);
+                if (int(P.x) > 350 && int(P.x) < 800 - 350 && int(P.y) > 350 && int(P.y) < 800 - 350)
+                    std::cout << "🎨: " << P << "\t" << uv_screen << "\t" << uv_ratio << std::endl;
             }
         }
     }
@@ -92,33 +101,40 @@ Vec3f world2screen(Vec3f v) {
 }
 
 int main(int argc, char **argv) {
+    TGAImage image(width, height, TGAImage::RGB);
+    TGAImage sss(width, height, TGAImage::RGB);
     if (2 == argc) {
         model = new Model(argv[1]);
     } else {
         model = new Model("../african_head/african_head.obj");
+        sss.read_tga_file("../african_head/african_head_diffuse.tga");
     }
 
     float *zbuffer = new float[width * height];
     for (int i = width * height; i--; zbuffer[i] = -FLOAT_MAX);
-
-    TGAImage image(width, height, TGAImage::RGB);
     Vec3f light_dir(0, 0, -1.);
     for (int i = 0; i < model->nfaces(); i++) {
         std::vector<int> face = model->face(i);
         Vec3f screen_coords[3];
         Vec3f world_coords[3];  // face的三个顶点
+        Vec3f uv_coords[3];
         for (int j = 0; j < 3; j++) {
             Vec3f v = model->vert(face[j]);
-            screen_coords[j] = world2screen(v);
             world_coords[j] = v;
+            screen_coords[j] = world2screen(v);
+            uv_coords[j] = model->uv(face[j]);
         }
         Vec3f n = cross(world_coords[2] - world_coords[0],
                         world_coords[1] - world_coords[0]);  // 法向量
         n.normalize();
         float intensity = n * light_dir;  // 光照强度
-        std::cout << "💡: " << intensity << "\tn:" << n << std::endl;
+
+        // if (i % 500 == 0)
+        //     std::cout << "UV:" << uv_coords[0] << "\t" << uv_coords[1] << "\t" << uv_coords[2] << std::endl;
+        // std::cout << "💡: " << intensity << "\tn:" << n << std::endl;
+
         if (intensity > 0) {
-            triangle(screen_coords, zbuffer, image, TGAColor(intensity * 255, intensity * 255, intensity * 255, 255));
+            triangle(screen_coords, uv_coords, zbuffer, image, sss, intensity);
         }
     }
     image.flip_vertically();
