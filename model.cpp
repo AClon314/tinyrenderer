@@ -21,12 +21,11 @@ Model::Model(const char *filename) : verts_(), faces_(), uvs_() {
             for (int i = 0; i < 3; i++) iss >> v[i];
             verts_.push_back(v);
         } else if (!line.compare(0, 2, "f ")) {
-            std::vector<int> f;
-            int itrash, idx;
+            std::vector<fIndex> f;
+            int v, vt, vn;
             iss >> trash;
-            while (iss >> idx >> trash >> itrash >> trash >> itrash) {
-                idx--;  // in wavefront obj all indices start at 1, not zero
-                f.push_back(idx);
+            while (iss >> v >> trash >> vt >> trash >> vn) {
+                f.push_back({v - 1, vt - 1, vn - 1});  // in wavefront obj all indices start at 1, not zero
             }
             faces_.push_back(f);
         } else if (!line.compare(0, 3, "vt ")) {
@@ -51,7 +50,7 @@ int Model::nfaces() {
     return (int)faces_.size();
 }
 
-std::vector<int> Model::face(int idx) {
+std::vector<fIndex> Model::face(int idx) {
     return faces_[idx];
 }
 

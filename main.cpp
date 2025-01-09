@@ -18,8 +18,8 @@ const TGAColor green = TGAColor(0, 255, 0, 255);
 const TGAColor blue = TGAColor(0, 0, 255, 255);
 const TGAColor rgb[] = {red, green, blue};
 Model *model = NULL;
-const int width = 800;
-const int height = 800;
+int width = 800;
+int height = 800;
 
 // 判断缓/陡，画直线，lesson 1
 void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) {
@@ -88,8 +88,9 @@ void triangle(Vec3f *screen, Vec3f *uv, float *zbuffer, TGAImage &image, TGAImag
                 zbuffer[idx] = P.z;
                 // image.set(P.x, P.y, TGAColor(sss.get(P.x, P.y)) * intensity);
                 image.set(P.x, P.y, TGAColor(sss.get(uv_screen[0], uv_screen[1])) * intensity);
-                if (int(P.x) > 350 && int(P.x) < 800 - 350 && int(P.y) > 350 && int(P.y) < 800 - 350)
-                    std::cout << "🎨: " << P << "\t" << uv_screen << "\t" << uv_ratio << std::endl;
+                // if (int(P.x) > 350 && int(P.x) < 800 - 350 && int(P.y) > 250 && int(P.y) < 800 - 250) {
+                //     std::cout << "xyz " << P << "\tuv " << uv_screen << "\t重心坐标 " << bc_ratio << std::endl;
+                // }
             }
         }
     }
@@ -103,34 +104,37 @@ Vec3f world2screen(Vec3f v) {
 int main(int argc, char **argv) {
     TGAImage image(width, height, TGAImage::RGB);
     TGAImage sss(width, height, TGAImage::RGB);
-    if (2 == argc) {
+    std::string tga_file = "../african_head/african_head_diffuse.tga";
+    if (argc > 1) {
         model = new Model(argv[1]);
+        if (argc > 2) tga_file = argv[2];
     } else {
         model = new Model("../african_head/african_head.obj");
-        sss.read_tga_file("../african_head/african_head_diffuse.tga");
     }
+    sss.read_tga_file(tga_file.c_str());
+    sss.flip_vertically();  // 将图像翻转，因为TGA文件的原点在左上角，而屏幕原点在左下角
 
     float *zbuffer = new float[width * height];
     for (int i = width * height; i--; zbuffer[i] = -FLOAT_MAX);
     Vec3f light_dir(0, 0, -1.);
     for (int i = 0; i < model->nfaces(); i++) {
-        std::vector<int> face = model->face(i);
+        std::vector<fIndex> face = model->face(i);
         Vec3f screen_coords[3];
         Vec3f world_coords[3];  // face的三个顶点
         Vec3f uv_coords[3];
         for (int j = 0; j < 3; j++) {
-            Vec3f v = model->vert(face[j]);
+            Vec3f v = model->vert(face[j].v);
             world_coords[j] = v;
             screen_coords[j] = world2screen(v);
-            uv_coords[j] = model->uv(face[j]);
+            uv_coords[j] = model->uv(face[j].vt);
         }
         Vec3f n = cross(world_coords[2] - world_coords[0],
                         world_coords[1] - world_coords[0]);  // 法向量
         n.normalize();
         float intensity = n * light_dir;  // 光照强度
 
-        // if (i % 500 == 0)
-        //     std::cout << "UV:" << uv_coords[0] << "\t" << uv_coords[1] << "\t" << uv_coords[2] << std::endl;
+        if (i % 500 == 0)
+            std::cout << "UV:" << uv_coords[0] << "\t" << uv_coords[1] << "\t" << uv_coords[2] << std::endl;
         // std::cout << "💡: " << intensity << "\tn:" << n << std::endl;
 
         if (intensity > 0) {

@@ -5,10 +5,17 @@
 
 #include "geometry.h"
 
+// obj: f v/vt/vn
+struct fIndex {
+    int v;   // vertex idx
+    int vt;  // uv纹理坐标idx
+    int vn;  // normal idx
+};
+
 class Model {
    private:
     std::vector<Vec3f> verts_;
-    std::vector<std::vector<int> > faces_;
+    std::vector<std::vector<fIndex> > faces_;
     std::vector<Vec3f> uvs_;
 
    public:
@@ -18,7 +25,7 @@ class Model {
     int nfaces();
     Vec3f vert(int i);
     Vec3f uv(int i);
-    std::vector<int> face(int idx);
+    std::vector<fIndex> face(int idx);
 };
 
 #endif  //__MODEL_H__
