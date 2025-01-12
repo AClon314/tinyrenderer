@@ -98,11 +98,18 @@ void triangle(Vec3f *screen, Vec3f *uv, float *zbuffer, TGAImage &image, TGAImag
 
 // -1~1 mapping to 0~width/height
 Vec3f world2screen(Vec3f v) {
+    float perspect = 0.8;  // funny bug: 如果为负数，zbuffer则会优先绘制远处的点
+    perspect = (1 - v.z / perspect);
+    v = v / perspect;
     return Vec3f(int((v.x + 1.) * width / 2. + .5), int((v.y + 1.) * height / 2. + .5), v.z);
 }
 
 int main(int argc, char **argv) {
     TGAImage image(width, height, TGAImage::RGB);
+    // 画白色背景
+    // for (int i = 0; i < width * height; i++) {
+    //     image.set(i % width, i / width, white);
+    // }
     TGAImage sss(width, height, TGAImage::RGB);
     std::string tga_file = "../african_head/african_head_diffuse.tga";
     if (argc > 1) {
@@ -135,7 +142,6 @@ int main(int argc, char **argv) {
 
         if (i % 500 == 0)
             std::cout << "UV:" << uv_coords[0] << "\t" << uv_coords[1] << "\t" << uv_coords[2] << std::endl;
-        // std::cout << "💡: " << intensity << "\tn:" << n << std::endl;
 
         if (intensity > 0) {
             triangle(screen_coords, uv_coords, zbuffer, image, sss, intensity);
