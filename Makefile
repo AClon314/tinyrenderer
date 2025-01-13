@@ -1,7 +1,7 @@
 SYSCONF_LINK = g++
-CPPFLAGS	 = -O3
-LDFLAGS	  = -O3
-LIBS		 = -lm
+CPPFLAGS = -O3
+LDFLAGS = -O3
+LIBS = -lm
 
 DESTDIR = ./build/
 TARGET  = main

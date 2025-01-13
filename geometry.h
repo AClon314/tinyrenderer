@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <ostream>
+#include <vector>
 
 template <class t>
 struct Vec2 {
@@ -102,8 +103,8 @@ class Matrix {
 
    public:
     Matrix(int r = DEFAULT_ALLOC, int c = DEFAULT_ALLOC);
-    inline int nrows();
-    inline int ncols();
+    int nrows();
+    int ncols();
 
     static Matrix identity(int dimensions);
     std::vector<float>& operator[](const int i);

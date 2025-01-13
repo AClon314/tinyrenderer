@@ -1,4 +1,5 @@
 #include <cmath>
+#include <iostream>
 #include <limits>
 #include <vector>
 
@@ -13,7 +14,17 @@ const int depth = 255;
 Model *model = NULL;
 int *zbuffer = NULL;
 Vec3f light_dir(0, 0, -1);
-Vec3f camera(0, 0, 3);
+Vec3f camera(1, 2, 5);  // y轴向上
+
+void print_matrix(Matrix m) {
+    for (int i = 0; i < m.nrows(); i++) {
+        for (int j = 0; j < m.ncols(); j++) {
+            std::cout.precision(2);
+            std::cout << m[i][j] << "\t";
+        }
+        std::cout << std::endl;
+    }
+}
 
 Vec3f m2v(Matrix m) {
     return Vec3f(m[0][0] / m[3][0], m[1][0] / m[3][0], m[2][0] / m[3][0]);
@@ -83,6 +94,26 @@ void triangle(Vec3i t0, Vec3i t1, Vec3i t2, Vec2i uv0, Vec2i uv1, Vec2i uv2, TGA
     }
 }
 
+// glm::View矩阵，难点
+Matrix lookat(Vec3f eye, Vec3f center, Vec3f up) {
+    // 要理解Vec3f存的是 坐标点 还是 向量基，此处存的是 向量基
+    Vec3f z = (eye - center).normalize();  // 点❌ 方向✅
+    Vec3f x = (up ^ z).normalize();
+    Vec3f y = (z ^ x).normalize();
+    Matrix rot = Matrix::identity(4);
+    Matrix trans = Matrix::identity(4);
+    for (int i = 0; i < 3; i++) {
+        rot[0][i] = x[i];
+        rot[1][i] = y[i];
+        rot[2][i] = z[i];
+        trans[i][3] = -eye[i];
+    }
+    return rot * trans;  // 顺序很重要
+    // 矩阵应用从右到左，给了cam的世界坐标，对坐标点做变换：先平移再旋转；反之，旋转后再平移就不准确了
+    // 对cam向量基做变换：先旋转再平移
+    // 世界坐标->cam坐标，让世界坐标点 主动出现在 cam的视野(2D屏幕/舞台)内。
+}
+
 int main(int argc, char **argv) {
     if (2 == argc) {
         model = new Model(argv[1]);
@@ -96,8 +127,10 @@ int main(int argc, char **argv) {
     }
 
     {  // draw the model
+        Matrix View = lookat(camera, Vec3f(0, 0, 0), Vec3f(0, 1, 0));
         Matrix Projection = Matrix::identity(4);
-        Matrix ViewPort = viewport(width / 8, height / 8, width * 3 / 4, height * 3 / 4);
+        Matrix ViewPort = viewport(0, 0, width, height);
+        print_matrix(View);
         Projection[3][2] = -1.f / camera.z;
 
         TGAImage image(width, height, TGAImage::RGB);
@@ -107,7 +140,7 @@ int main(int argc, char **argv) {
             Vec3f world_coords[3];
             for (int j = 0; j < 3; j++) {
                 Vec3f v = model->vert(face[j]);
-                screen_coords[j] = m2v(ViewPort * Projection * v2m(v));
+                screen_coords[j] = m2v(ViewPort * Projection * View * v2m(v));  // Viewport_clipToScreen<-Proj<-View_camera(4,4)<-多个model局部(4,1)
                 world_coords[j] = v;
             }
             Vec3f n = (world_coords[2] - world_coords[0]) ^ (world_coords[1] - world_coords[0]);
