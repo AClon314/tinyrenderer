@@ -1,2 +1,6 @@
 /build/*
 !/build/g
+
+/*.o
+/output.tga
+/zbuffer.tga

@@ -1,13 +1,9 @@
 #!/bin/bash
-exe=01
-args="-ggdb -g -pg -O3"
-self=$(dirname $0)
-pushd $self > /dev/null
-set -x
-g++ ../*.cpp $args -o $exe &&\
-./$exe || exit 1
+exe=main
+DIR=$(dirname $0)
+pushd $DIR/.. > /dev/null
+make && $DIR/$exe $args
 # gprof ./$exe gmon.out > gprof.txt
 
-set +x
 xdg-open output.tga > /dev/null 2>&1
 popd > /dev/null
