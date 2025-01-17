@@ -16,22 +16,21 @@ TGAImage::TGAImage(int w, int h, int bpp) : data(NULL), width(w), height(h), byt
     memset(data, 0, nbytes);
 }
 
-TGAImage::TGAImage(const TGAImage &img) {
-    width = img.width;
-    height = img.height;
-    bytespp = img.bytespp;
+TGAImage::TGAImage(const TGAImage &img) : data(NULL), width(img.width), height(img.height), bytespp(img.bytespp) {
     unsigned long nbytes = width * height * bytespp;
     data = new unsigned char[nbytes];
     memcpy(data, img.data, nbytes);
 }
 
 TGAImage::~TGAImage() {
-    if (data) delete[] data;
+    if (data)
+        delete[] data;
 }
 
 TGAImage &TGAImage::operator=(const TGAImage &img) {
     if (this != &img) {
-        if (data) delete[] data;
+        if (data)
+            delete[] data;
         width = img.width;
         height = img.height;
         bytespp = img.bytespp;
@@ -43,7 +42,8 @@ TGAImage &TGAImage::operator=(const TGAImage &img) {
 }
 
 bool TGAImage::read_tga_file(const char *filename) {
-    if (data) delete[] data;
+    if (data)
+        delete[] data;
     data = NULL;
     std::ifstream in;
     in.open(filename, std::ios::binary);
@@ -113,13 +113,13 @@ bool TGAImage::load_rle_data(std::ifstream &in) {
         if (chunkheader < 128) {
             chunkheader++;
             for (int i = 0; i < chunkheader; i++) {
-                in.read((char *)colorbuffer.raw, bytespp);
+                in.read((char *)colorbuffer.bgra, bytespp);
                 if (!in.good()) {
                     std::cerr << "an error occured while reading the header\n";
                     return false;
                 }
                 for (int t = 0; t < bytespp; t++)
-                    data[currentbyte++] = colorbuffer.raw[t];
+                    data[currentbyte++] = colorbuffer.bgra[t];
                 currentpixel++;
                 if (currentpixel > pixelcount) {
                     std::cerr << "Too many pixels read\n";
@@ -128,14 +128,14 @@ bool TGAImage::load_rle_data(std::ifstream &in) {
             }
         } else {
             chunkheader -= 127;
-            in.read((char *)colorbuffer.raw, bytespp);
+            in.read((char *)colorbuffer.bgra, bytespp);
             if (!in.good()) {
                 std::cerr << "an error occured while reading the header\n";
                 return false;
             }
             for (int i = 0; i < chunkheader; i++) {
                 for (int t = 0; t < bytespp; t++)
-                    data[currentbyte++] = colorbuffer.raw[t];
+                    data[currentbyte++] = colorbuffer.bgra[t];
                 currentpixel++;
                 if (currentpixel > pixelcount) {
                     std::cerr << "Too many pixels read\n";
@@ -257,11 +257,19 @@ TGAColor TGAImage::get(int x, int y) {
     return TGAColor(data + (x + y * width) * bytespp, bytespp);
 }
 
-bool TGAImage::set(int x, int y, TGAColor c) {
+bool TGAImage::set(int x, int y, TGAColor &c) {
     if (!data || x < 0 || y < 0 || x >= width || y >= height) {
         return false;
     }
-    memcpy(data + (x + y * width) * bytespp, c.raw, bytespp);
+    memcpy(data + (x + y * width) * bytespp, c.bgra, bytespp);
+    return true;
+}
+
+bool TGAImage::set(int x, int y, const TGAColor &c) {
+    if (!data || x < 0 || y < 0 || x >= width || y >= height) {
+        return false;
+    }
+    memcpy(data + (x + y * width) * bytespp, c.bgra, bytespp);
     return true;
 }
 
@@ -278,7 +286,8 @@ int TGAImage::get_height() {
 }
 
 bool TGAImage::flip_horizontally() {
-    if (!data) return false;
+    if (!data)
+        return false;
     int half = width >> 1;
     for (int i = 0; i < half; i++) {
         for (int j = 0; j < height; j++) {
@@ -292,7 +301,8 @@ bool TGAImage::flip_horizontally() {
 }
 
 bool TGAImage::flip_vertically() {
-    if (!data) return false;
+    if (!data)
+        return false;
     unsigned long bytes_per_line = width * bytespp;
     unsigned char *line = new unsigned char[bytes_per_line];
     int half = height >> 1;
@@ -316,7 +326,8 @@ void TGAImage::clear() {
 }
 
 bool TGAImage::scale(int w, int h) {
-    if (w <= 0 || h <= 0 || !data) return false;
+    if (w <= 0 || h <= 0 || !data)
+        return false;
     unsigned char *tdata = new unsigned char[w * h * bytespp];
     int nscanline = 0;
     int oscanline = 0;
